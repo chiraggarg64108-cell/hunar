@@ -160,6 +160,9 @@ export default function WorkerDashboard() {
                 <div>
                   <p className="text-xs text-slate-400 font-semibold">Rate</p>
                   <p className="text-hunar-green font-black text-lg">{worker.rate}</p>
+                  {worker.availability && (
+                    <p className="text-xs text-indigo-600 font-bold mt-0.5">⏰ {worker.availability}</p>
+                  )}
                 </div>
                 <QRCodeSVG
                   value={profileUrl}

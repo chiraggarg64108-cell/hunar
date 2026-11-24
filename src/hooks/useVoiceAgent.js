@@ -193,7 +193,11 @@ export function useVoiceAgent({
       const cleanMime = cleanAudioMimeType(preferredMime)
       console.log(`[VoiceDebug] Initializing MediaRecorder with MIME: ${cleanMime}`)
 
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: preferredMime })
+      const recorderOptions = { audioBitsPerSecond: 16000 }
+      if (preferredMime) {
+        recorderOptions.mimeType = preferredMime
+      }
+      const mediaRecorder = new MediaRecorder(stream, recorderOptions)
       mediaRecorderRef.current = mediaRecorder
       chunksRef.current = []
 
@@ -274,11 +278,11 @@ export function useVoiceAgent({
         } else {
           // Volume below speech threshold
           if (hasSpokenRef.current && !silenceTimerRef.current) {
-            // Auto-stop after 1.8 seconds of silence
+            // Auto-stop after 1.1 seconds of silence
             silenceTimerRef.current = setTimeout(() => {
-              console.log('[VoiceDebug] VAD: 1.8s silence detected after speech. Auto-stopping and sending to Gemini...')
+              console.log('[VoiceDebug] VAD: 1.1s silence detected after speech. Auto-stopping and sending to Gemini...')
               stopRecordingAndSend()
-            }, 1800)
+            }, 1100)
           }
         }
 

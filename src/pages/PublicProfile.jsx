@@ -167,6 +167,9 @@ export default function PublicProfile() {
             <div>
               <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide">{t('fairWage')}</p>
               <p className="text-2xl font-black text-hunar-green">{worker.rate}</p>
+              {worker.availability && (
+                <p className="text-xs text-indigo-600 dark:text-indigo-400 font-bold mt-0.5">⏰ {worker.availability}</p>
+              )}
             </div>
             {isPro
               ? <span className="bg-yellow-100 text-yellow-700 text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1">🏅 Verified Pro</span>

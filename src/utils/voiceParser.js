@@ -107,8 +107,8 @@ export class RawAudioRecorder {
     }
 
     this.mediaRecorder = this.mimeType
-      ? new MediaRecorder(this.stream, { mimeType: this.mimeType })
-      : new MediaRecorder(this.stream)
+      ? new MediaRecorder(this.stream, { mimeType: this.mimeType, audioBitsPerSecond: 16000 })
+      : new MediaRecorder(this.stream, { audioBitsPerSecond: 16000 })
 
     this.mediaRecorder.ondataavailable = (e) => {
       if (e.data && e.data.size > 0) {

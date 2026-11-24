@@ -527,14 +527,31 @@ export function runLocalAgentBrain({ transcript, currentProfile = {}, mode = 'on
     }
   }
 
+  // G. Extract Availability / Timing
+  if (/(?:24\s*(?:x\s*7|ghante|hours)|emergency|available|subah|shaam|am|pm|baje|timing|समय)/i.test(lower)) {
+    if (/24\s*(?:x\s*7|ghante|hours)|emergency/i.test(lower)) {
+      updates.availability = '24x7 Emergency'
+    } else {
+      const matchRange = text.match(/(?:subah\s*)?(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\s*(?:se|to|-)\s*(?:shaam\s*)?(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)/i)
+      if (matchRange) {
+        updates.availability = `${matchRange[1]} – ${matchRange[2]}`
+      } else {
+        const directTime = text.match(/(\d{1,2}\s*(?:am|pm)\s*[-–to]\s*\d{1,2}\s*(?:am|pm))/i)
+        if (directTime) {
+          updates.availability = directTime[1]
+        }
+      }
+    }
+  }
+
   const hasUpdates = Object.keys(updates).length > 0
   const merged = { ...currentProfile, ...updates }
 
   if (isEdit) {
     intent = hasUpdates ? 'edit_field' : 'clarify'
     const replyText = hasUpdates
-      ? `Aapka ${updates.rate ? 'rate ' + updates.rate : (updates.area || updates.trade || updates.experience || 'detail')} update ho gaya hai. Kya sab theek hai?`
-      : 'Aap jo detail badalna chahte hain vo bolein, jaise "mera rate 400 rupaye kar do".'
+      ? `Aapka ${updates.availability ? 'timing ' + updates.availability : updates.rate ? 'rate ' + updates.rate : (updates.area || updates.trade || updates.experience || 'detail')} update ho gaya hai. Kya sab theek hai?`
+      : 'Aap jo detail badalna chahte hain vo bolein, jaise "mera rate 400 rupaye kar do" ya "timing 9 AM to 7 PM kar do".'
 
     return {
       transcript: text,
@@ -545,7 +562,7 @@ export function runLocalAgentBrain({ transcript, currentProfile = {}, mode = 'on
     }
   }
 
-  // Onboarding flow: Next missing field
+  // Onboarding flow: Next missing field (availability is optional)
   const missing = []
   if (!merged.trade && !merged.skill) missing.push('trade')
   if (!merged.name) missing.push('name')
@@ -555,7 +572,7 @@ export function runLocalAgentBrain({ transcript, currentProfile = {}, mode = 'on
 
   if (missing.length === 0) {
     intent = 'finish'
-    const replyText = `Bahut badiya! Aapki details note ho gayi: ${merged.name}, ${merged.trade || merged.skill}, ${merged.experience}, ${merged.area}, rate ${merged.rate}. Kya ye sab sahi hai?`
+    const replyText = `Bahut badiya! Aapki details note ho gayi: ${merged.name}, ${merged.trade || merged.skill}, ${merged.experience}, ${merged.area}, rate ${merged.rate}${merged.availability ? ', timing ' + merged.availability : ''}. Kya ye sab sahi hai?`
     return {
       transcript: text,
       updates,
@@ -623,15 +640,16 @@ CURRENT PROFILE: ${JSON.stringify({
     name: currentProfile.name || null,
     experience: currentProfile.experience || null,
     area: currentProfile.area || null,
-    rate: currentProfile.rate || null
+    rate: currentProfile.rate || null,
+    availability: currentProfile.availability || null
   })}
 LAST QUESTION ASKED: "${lastQuestion || ''}"
 
 TASK:
 1. Transcribe accurately what they ACTUALLY said in clean natural Hinglish/English.
-2. Extract ANY profile fields mentioned (trade, name, experience as a number/string like '6 Years', area, rate as number/string like '₹300'). Normalize trade strictly to one of: Plumber, Electrician, Mason, Carpenter, Painter, AC Technician.
+2. Extract ANY profile fields mentioned (trade, name, experience as a number/string like '6 Years', area, rate as number/string like '₹300', availability as timing like '9 AM – 7 PM', 'Subah 8 – Shaam 6', '24x7 Emergency'). Normalize trade strictly to one of: Plumber, Electrician, Mason, Carpenter, Painter, AC Technician.
 3. If in edit mode, update whichever field the user asked to change.
-4. Write a short, warm, natural 1-sentence Hindi/Hinglish reply asking for the NEXT missing field (or confirming the edit).
+4. Write a short, warm, natural 1-sentence Hindi/Hinglish reply asking for the NEXT missing core field (or confirming the edit). Availability is optional.
 5. Return ONLY valid JSON (no markdown fences, no conversational prose outside JSON):
 {
   "transcript": "exact clean text user spoke",
@@ -640,7 +658,8 @@ TASK:
     "name": "string or null",
     "experience": "string or number or null",
     "area": "string or null",
-    "rate": "string or null"
+    "rate": "string or null",
+    "availability": "string or null"
   },
   "intent": "provide_info | edit_field | confirm_yes | confirm_no | finish",
   "replyText": "short warm Hindi/Hinglish response",
@@ -684,11 +703,13 @@ TASK:
         ],
         generationConfig: {
           temperature: 0.2,
-          responseMimeType: 'application/json'
+          responseMimeType: 'application/json',
+          maxOutputTokens: 250,
+          thinkingConfig: { thinkingBudget: 0 }
         }
       }
 
-      const res = await fetch(url, {
+      let res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody)
@@ -696,6 +717,27 @@ TASK:
 
       lastStatus = res.status
       console.log(`[GeminiVoice] ${model} HTTP status:`, res.status)
+
+      // Safety fallback: if Gemini returns a 400 error mentioning thinkingConfig, retry once without thinkingConfig
+      if (res.status === 400 && requestBody.generationConfig?.thinkingConfig) {
+        let errPeek = ''
+        try {
+          const cloned = res.clone()
+          const errJ = await cloned.json()
+          errPeek = errJ?.error?.message || ''
+        } catch {}
+        if (errPeek.toLowerCase().includes('thinking')) {
+          console.warn(`[GeminiVoice] 400 mentioning thinkingConfig on ${model} (${errPeek}). Retrying without thinkingConfig...`)
+          delete requestBody.generationConfig.thinkingConfig
+          res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+          })
+          lastStatus = res.status
+          console.log(`[GeminiVoice] Retry without thinkingConfig status:`, res.status)
+        }
+      }
 
       if (res.ok) {
         if (typeof window !== 'undefined') {
@@ -820,18 +862,19 @@ CURRENT PROFILE: ${JSON.stringify({
       name: currentProfile.name || null,
       experience: currentProfile.experience || null,
       area: currentProfile.area || null,
-      rate: currentProfile.rate || null
+      rate: currentProfile.rate || null,
+      availability: currentProfile.availability || null
     })}
 LAST QUESTION: "${lastQuestion || ''}"
 
 1. Transcribe accurately what they meant in clean natural Hinglish/English.
-2. Extract ANY profile fields mentioned (trade, name, experience as a number/string like '6 Years', area, rate as number/string like '₹300'). Normalize trade strictly to one of: Plumber, Electrician, Mason, Carpenter, Painter, AC Technician.
+2. Extract ANY profile fields mentioned (trade, name, experience as a number/string like '6 Years', area, rate as number/string like '₹300', availability as timing like '9 AM – 7 PM', 'Subah 8 – Shaam 6', '24x7 Emergency'). Normalize trade strictly to one of: Plumber, Electrician, Mason, Carpenter, Painter, AC Technician.
 3. If in edit mode, update whichever field the user asked to change.
-4. Write a short, warm, natural 1-sentence Hindi/Hinglish reply asking for the NEXT missing field (or confirming the edit).
+4. Write a short, warm, natural 1-sentence Hindi/Hinglish reply asking for the NEXT missing field (or confirming the edit). Timing/availability is optional.
 5. Return ONLY valid JSON (no markdown fences):
 {
   "transcript": "${text}",
-  "updates": { "trade": null, "name": null, "experience": null, "area": null, "rate": null },
+  "updates": { "trade": null, "name": null, "experience": null, "area": null, "rate": null, "availability": null },
   "intent": "provide_info | edit_field | confirm_yes | confirm_no | finish",
   "replyText": "short warm response",
   "shouldAutoListen": true
@@ -847,14 +890,39 @@ LAST QUESTION: "${lastQuestion || ''}"
 
     for (const model of models) {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(effectiveKey)}`
-      const res = await fetch(url, {
+      const textRequestBody = {
+        contents: [{ parts: [{ text: systemPrompt }] }],
+        generationConfig: {
+          temperature: 0.2,
+          responseMimeType: 'application/json',
+          maxOutputTokens: 250,
+          thinkingConfig: { thinkingBudget: 0 }
+        }
+      }
+
+      let res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: systemPrompt }] }],
-          generationConfig: { temperature: 0.2, responseMimeType: 'application/json' }
-        })
+        body: JSON.stringify(textRequestBody)
       })
+
+      // Safety fallback: if Gemini returns 400 error mentioning thinkingConfig, retry once without thinkingConfig
+      if (res.status === 400 && textRequestBody.generationConfig?.thinkingConfig) {
+        let errPeek = ''
+        try {
+          const cloned = res.clone()
+          const errJ = await cloned.json()
+          errPeek = errJ?.error?.message || ''
+        } catch {}
+        if (errPeek.toLowerCase().includes('thinking')) {
+          delete textRequestBody.generationConfig.thinkingConfig
+          res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(textRequestBody)
+          })
+        }
+      }
 
       if (res.ok) {
         if (typeof window !== 'undefined') {

@@ -60,6 +60,7 @@ export default function VoiceBuilderPage() {
         rate: existingWorker.rate || '',
         rateNum: existingWorker.rateNum || null,
         rateType: existingWorker.rateType || 'visit',
+        availability: existingWorker.availability || '',
         avatar: existingWorker.avatar || null,
         verificationCount: existingWorker.verificationCount || 0,
         verifiedPhones: existingWorker.verifiedPhones || [],
@@ -78,7 +79,8 @@ export default function VoiceBuilderPage() {
       area: '',
       rate: '',
       rateNum: null,
-      rateType: 'visit'
+      rateType: 'visit',
+      availability: ''
     }
   })
 
@@ -153,7 +155,8 @@ export default function VoiceBuilderPage() {
             area: next.area || existingWorker.area,
             rate: next.rate || existingWorker.rate,
             rateNum: next.rateNum || existingWorker.rateNum,
-            rateType: next.rateType || existingWorker.rateType
+            rateType: next.rateType || existingWorker.rateType,
+            availability: next.availability || existingWorker.availability || ''
           }
           saveWorker(updatedWorker)
         }
@@ -297,6 +300,7 @@ export default function VoiceBuilderPage() {
         rate: profile.rate || existingWorker.rate,
         rateNum: profile.rateNum || existingWorker.rateNum,
         rateType: profile.rateType || existingWorker.rateType,
+        availability: profile.availability || existingWorker.availability || '',
         avatar: photoPreview || existingWorker.avatar
       }
       saveWorker(updatedWorker)
@@ -317,6 +321,7 @@ export default function VoiceBuilderPage() {
       rate: profile.rate || (isHindi ? '₹300 / विजिट' : '₹300 / visit'),
       rateNum: profile.rateNum || 300,
       rateType: profile.rateType || 'visit',
+      availability: profile.availability || '9 AM – 7 PM',
       phone: currentUser?.phone || '9876543210',
       avatar: photoPreview || `https://api.dicebear.com/9.x/micah/svg?seed=${workerId}`,
       verificationCount: 0,
@@ -490,7 +495,7 @@ export default function VoiceBuilderPage() {
                   <span>{isHindi ? 'प्रोफाइल कार्ड (बदलने के लिए टैप करें):' : 'Profile Fields Assembly (Tap to edit):'}</span>
                 </span>
                 <span className="text-[10px] font-bold text-teal-700 dark:text-teal-300 bg-teal-100 dark:bg-teal-900/60 px-2 py-0.5 rounded-md">
-                  {[profile.name, (profile.trade || profile.skill), profile.experience, profile.area, profile.rate].filter(Boolean).length} / 5 {isHindi ? 'तैयार' : 'Done'}
+                  {[profile.name, (profile.trade || profile.skill), profile.experience, profile.area, profile.rate, profile.availability].filter(Boolean).length} / 6 {isHindi ? 'तैयार' : 'Done'}
                 </span>
               </div>
 
@@ -585,7 +590,7 @@ export default function VoiceBuilderPage() {
                 {/* 5. Rate Card */}
                 <div
                   onClick={() => setFieldToEdit('rate')}
-                  className={`p-1.5 rounded-xl border cursor-pointer transition-all hover:scale-101 col-span-2 sm:col-span-1 ${
+                  className={`p-1.5 rounded-xl border cursor-pointer transition-all hover:scale-101 ${
                     recentlyUpdatedFields.includes('rate')
                       ? 'ring-2 ring-green-500 bg-green-50 dark:bg-green-950/60'
                       : profile.rate
@@ -599,6 +604,34 @@ export default function VoiceBuilderPage() {
                   </div>
                   <span className="font-bold text-hunar-green mt-0.5 block truncate">
                     {profile.rate || <span className="text-amber-600 dark:text-amber-400 italic">⏳ {isHindi ? 'पूछ रहे हैं...' : 'Waiting...'}</span>}
+                  </span>
+                </div>
+
+                {/* 6. Availability Card */}
+                <div
+                  onClick={() => setFieldToEdit('availability')}
+                  className={`p-1.5 rounded-xl border cursor-pointer transition-all hover:scale-101 ${
+                    recentlyUpdatedFields.includes('availability')
+                      ? 'ring-2 ring-green-500 bg-green-50 dark:bg-green-950/60'
+                      : profile.availability
+                      ? 'bg-indigo-50 dark:bg-indigo-950/80 border-indigo-300 dark:border-indigo-700 ring-1 ring-indigo-400'
+                      : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] text-slate-400 uppercase font-bold">
+                      {isHindi ? 'समय / उपलब्धता' : 'TIMING / AVAILABILITY'}
+                    </span>
+                    <Edit3 size={10} className="text-slate-400" />
+                  </div>
+                  <span className="font-bold text-slate-800 dark:text-slate-100 truncate block mt-0.5">
+                    {profile.availability ? (
+                      <span className="text-indigo-700 dark:text-indigo-300">⏰ {profile.availability}</span>
+                    ) : (
+                      <span className="text-slate-400 dark:text-slate-500 italic font-normal text-[11px]">
+                        {isHindi ? 'वैकल्पिक (उदा. 9 AM – 7 PM)' : 'Optional (e.g. 9 AM – 7 PM)'}
+                      </span>
+                    )}
                   </span>
                 </div>
               </div>
@@ -760,11 +793,13 @@ export default function VoiceBuilderPage() {
                 <span className="text-[10px] font-bold text-slate-400 uppercase flex-shrink-0">Quick:</span>
                 {(isEditMode ? [
                   isHindi ? 'मेरा रेट अब 400 रुपये है' : 'Mera rate ab 400 rupaye hai',
+                  isHindi ? 'टाइमिंग 9 AM से 7 PM कर दो' : 'Timing 9 AM to 7 PM kar do',
                   isHindi ? 'तजुर्बा 8 साल हो गया' : 'Experience 8 saal ho gaya',
                   isHindi ? 'मैं बहालगढ़ में काम करता हूँ' : 'Main Bahalgarh mein kaam karta hoon',
                   isHindi ? 'हाँ सब सही है' : 'Haan sab theek hai'
                 ] : [
                   isHindi ? 'मैं प्लंबर हूँ, 6 साल का काम है, सोनीपत में' : 'Main plumber hoon, 6 saal ka kaam hai, Sonipat mein',
+                  isHindi ? 'सुबह 9 से शाम 7 बजे तक' : 'Subah 9 se shaam 7 tak available',
                   'Six years experience',
                   isHindi ? 'इलेक्ट्रीशियन हूँ, रेट 300 रुपये' : 'Electrician hoon, rate 300 rupaye',
                   isHindi ? 'मेरा नाम रमेश कुमार है' : 'Mera naam Ramesh Kumar hai',
@@ -824,6 +859,7 @@ export default function VoiceBuilderPage() {
                   { key: 'experience', label: isHindi ? 'तजुर्बा' : 'Tajurba / Experience', val: profile.experience },
                   { key: 'area', label: isHindi ? 'क्षेत्र / एरिया' : 'Area / Kshetr', val: profile.area },
                   { key: 'rate', label: isHindi ? 'तय रेट' : 'Nirdharit Dar / Rate', val: profile.rate },
+                  { key: 'availability', label: isHindi ? 'समय / उपलब्धता' : 'TIMING / AVAILABILITY', val: profile.availability || '9 AM – 7 PM' },
                 ].map(({ key, label, val }) => (
                   <div
                     key={key}
@@ -934,7 +970,9 @@ export default function VoiceBuilderPage() {
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 max-w-sm w-full border border-slate-200 dark:border-slate-800 shadow-2xl">
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                {isHindi ? `बदलें: ${fieldToEdit}` : `Edit ${fieldToEdit}`}
+                {isHindi
+                  ? `बदलें: ${fieldToEdit === 'availability' ? 'समय / उपलब्धता' : fieldToEdit}`
+                  : `Edit ${fieldToEdit === 'availability' ? 'Timing / Availability' : fieldToEdit}`}
               </h4>
               <button
                 onClick={() => setFieldToEdit(null)}
@@ -947,6 +985,7 @@ export default function VoiceBuilderPage() {
               type="text"
               className="input-field text-sm py-2.5 mb-3"
               defaultValue={profile[fieldToEdit] || ''}
+              placeholder={fieldToEdit === 'availability' ? 'उदा. 9 AM – 7 PM, 24x7 Emergency' : ''}
               id="editFieldInput"
               autoFocus
             />

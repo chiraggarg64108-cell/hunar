@@ -151,6 +151,14 @@ export default function AadhaarSkillCard({ worker, showActions = true, onShare =
                     {worker.rate}
                   </span>
                 </div>
+                {worker.availability && (
+                  <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
+                    <span className="text-slate-400 dark:text-slate-500">{lang === 'hi' ? 'समय / उपलब्धता:' : 'Timing / Avail:'}</span>
+                    <span className="font-bold text-indigo-700 dark:text-indigo-300 truncate ml-2">
+                      ⏰ {worker.availability}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Status Badge */}
