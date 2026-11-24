@@ -9,6 +9,8 @@ export const SKILL_METAS = {
   Electrician: { icon: '💡', label: 'Electrician / बिजली मिस्त्री', color: '#D97706', bg: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300' },
   Mason: { icon: '🧱', label: 'Mason / राजमिस्त्री', color: '#7C3AED', bg: 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300' },
   Carpenter: { icon: '🔨', label: 'Carpenter / बढ़ई', color: '#B45309', bg: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300' },
+  Painter: { icon: '🎨', label: 'Painter / पेंटर', color: '#EC4899', bg: 'bg-pink-50 dark:bg-pink-950/40 text-pink-700 dark:text-pink-300' },
+  'AC Technician': { icon: '❄️', label: 'AC Technician / एसी मैकेनिक', color: '#06B6D4', bg: 'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300' },
   Other: { icon: '🛠️', label: 'Other / अन्य हुनर', color: '#4B5563', bg: 'bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300' },
 }
 

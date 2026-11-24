@@ -1,5 +1,6 @@
 // Voice Parsing & Conversational AI Engine for HunarCard
 // Multimodal Audio Input (MediaRecorder + Gemini Audio API) + TTS clarity + Edit Mode
+import { getWorkingGeminiModel } from './voiceAgent'
 
 export const SKILL_KEYWORDS = {
   Plumber: [
@@ -248,7 +249,8 @@ Respond in ONLY this exact JSON shape, nothing else:
 
     console.log("GEMINI MULTIMODAL AUDIO PAYLOAD SENT:", { mimeType, promptLength: promptText.length })
 
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${effectiveKey}`, {
+    const activeModel = await getWorkingGeminiModel(effectiveKey)
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${effectiveKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -438,7 +440,8 @@ Respond in ONLY this JSON shape:
   "next_question_hindi": "one short Hindi follow-up question, or null if nothing is missing"
 }`
 
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${effectiveKey}`, {
+      const activeModel = await getWorkingGeminiModel(effectiveKey)
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${effectiveKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })

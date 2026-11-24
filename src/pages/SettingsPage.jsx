@@ -1,12 +1,14 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { useTheme } from '../context/ThemeContext'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
+import { getGeminiApiKey, setGeminiApiKey, isGeminiKeyConfigured, testGeminiApiKey } from '../utils/voiceAgent'
 import {
   Sun, Moon, Globe, User, Phone, ShieldCheck,
-  LogOut, Heart, HelpCircle, Layers, Sparkles
+  LogOut, Heart, HelpCircle, Layers, Sparkles, Key, CheckCircle2, AlertCircle, ExternalLink, Loader2
 } from 'lucide-react'
 
 export default function SettingsPage() {
@@ -14,6 +16,47 @@ export default function SettingsPage() {
   const { currentUser, logout } = useAuth()
   const { t, lang, toggleLang } = useLanguage()
   const { isDark, toggleTheme } = useTheme()
+
+  const [apiKeyInput, setApiKeyInput] = useState(getGeminiApiKey())
+  const [testStatus, setTestStatus] = useState(null) // null | 'testing' | 'success' | 'error'
+  const [testMessage, setTestMessage] = useState('')
+  const isConnected = isGeminiKeyConfigured()
+
+  const handleSaveApiKey = async () => {
+    const trimmed = (apiKeyInput || '').trim()
+    if (!trimmed) {
+      setTestStatus('error')
+      setTestMessage('Please paste your Gemini API key')
+      return
+    }
+
+    setTestStatus('testing')
+    setTestMessage('Testing connection to Gemini...')
+
+    const res = await testGeminiApiKey(trimmed)
+    if (res.success) {
+      setGeminiApiKey(trimmed)
+      setTestStatus('success')
+      setTestMessage('✅ Connected! Voice AI ready.')
+      setTimeout(() => {
+        setTestStatus(null)
+      }, 3500)
+    } else {
+      setTestStatus('error')
+      setTestMessage(res.error || 'Connection failed')
+    }
+  }
+
+  const handleClearApiKey = () => {
+    setGeminiApiKey('')
+    setApiKeyInput('')
+    setTestStatus('success')
+    setTestMessage('Key cleared.')
+    setTimeout(() => {
+      setTestStatus(null)
+      setTestMessage('')
+    }, 2000)
+  }
 
   const handleLogout = () => {
     logout()
@@ -31,8 +74,113 @@ export default function SettingsPage() {
             {t('settingsTitle')}
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            App preferences, account & revenue model
+            App preferences, Gemini AI Live Audio & account
           </p>
+        </div>
+
+        {/* 0. Gemini Live Multimodal Audio Key Configuration */}
+        <div className="app-card space-y-3 border-2 border-teal-500/30 dark:border-teal-400/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-teal-50 dark:bg-teal-950/80 text-teal-600 dark:text-teal-400 flex items-center justify-center">
+                <Key size={20} />
+              </div>
+              <div>
+                <p className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <span>Gemini Multimodal Voice AI</span>
+                  {isConnected ? (
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-ping" />
+                  ) : (
+                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                  )}
+                </p>
+                <div className="mt-0.5">
+                  {isConnected ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-950/60 px-2 py-0.5 rounded-full">
+                      <CheckCircle2 size={12} />
+                      <span>Gemini Live Audio Connected</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/60 px-2 py-0.5 rounded-full">
+                      <AlertCircle size={12} />
+                      <span>Add Gemini API Key in Settings</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+            Gemini 2.5 Flash powers real conversational multimodal audio listening for Hindi, English & Haryanvi without Web Speech bugs.
+          </p>
+
+          <div className="space-y-2 pt-1">
+            <div className="relative">
+              <input
+                type="password"
+                className="input-field text-xs py-2.5 font-mono pr-20"
+                placeholder="Paste AI Studio API Key (AIzaSy...)"
+                value={apiKeyInput}
+                onChange={(e) => {
+                  setApiKeyInput(e.target.value)
+                  if (testStatus) setTestStatus(null)
+                }}
+              />
+              {apiKeyInput && (
+                <button
+                  type="button"
+                  onClick={handleClearApiKey}
+                  className="absolute right-2 top-2.5 text-[10px] text-slate-400 hover:text-red-500 font-bold px-2 py-1"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {testMessage && (
+              <div className={`p-2.5 rounded-xl text-xs flex items-center gap-2 ${
+                testStatus === 'success'
+                  ? 'bg-green-50 dark:bg-green-950/80 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800'
+                  : testStatus === 'testing'
+                  ? 'bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                  : 'bg-red-50 dark:bg-red-950/80 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'
+              }`}>
+                {testStatus === 'testing' && <Loader2 size={14} className="animate-spin text-blue-600 flex-shrink-0" />}
+                {testStatus === 'success' && <CheckCircle2 size={14} className="text-green-600 flex-shrink-0" />}
+                {testStatus === 'error' && <AlertCircle size={14} className="text-red-600 flex-shrink-0" />}
+                <span className="font-semibold leading-tight">{testMessage}</span>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleSaveApiKey}
+                disabled={testStatus === 'testing'}
+                className="btn-primary text-xs py-2.5 flex-1 disabled:opacity-60"
+              >
+                {testStatus === 'testing' ? (
+                  <span className="flex items-center gap-1.5 justify-center">
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Connecting...</span>
+                  </span>
+                ) : (
+                  <span>{testStatus === 'success' ? '✅ Connected!' : 'Save & Connect'}</span>
+                )}
+              </button>
+              <a
+                href="https://aistudio.google.com/app/apikey"
+                target="_blank"
+                rel="noreferrer"
+                className="btn-secondary text-xs py-2.5 px-3 flex items-center justify-center gap-1 text-slate-600 dark:text-slate-300 w-auto"
+                title="Get free API Key from Google AI Studio"
+              >
+                <span>Get Free Key</span>
+                <ExternalLink size={12} />
+              </a>
+            </div>
+          </div>
         </div>
 
         {/* 1. Theme Setting (Dark / Light Mode) */}
